@@ -111,8 +111,7 @@ pyarrow==18.1.0
 PyAutoGUI==0.9.54
 pycparser==2.21
 pydeck==0.9.1
-pyee==13.0.0
-PyGetWindow==0.0.9
+pyee==13.0.0
 Pygments==2.17.2
 PyMsgBox==2.0.1
 pyparsing==3.2.3
@@ -125,8 +124,7 @@ python-dateutil==2.9.0.post0
 python-json-logger==2.0.7
 pytweening==1.2.0
 pytz==2024.2
-pywhatkit==5.4
-pywinpty==2.0.13
+pywhatkit==5.4
 PyYAML==6.0.1
 pyzmq==25.1.2
 qtconsole==5.5.1
