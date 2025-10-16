@@ -1,22 +1,442 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Expense Manager</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoneyMatrix Dashboard</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Chart.js for the dashboard charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        /* Custom Light Theme Styles */
+        :root {
+            --sidebar-bg: #ffffff; /* White */
+            --main-bg: #f4f7f9;    /* Light Grayish Blue */
+            --card-bg: #ffffff;    /* White */
+            --text-color: #333333; /* Dark Gray */
+            --primary-color: #5d5cff;
+            --accent-color: #ff5c93;
+            --secondary-color: #00b386;
+        }
+
+        /* 1. MANDATORY FIX: Ensure HTML/Body take full height and prevent external scrolling */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* This hides the browser's scrollbar */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--main-bg);
+            color: var(--text-color);
+        }
+
+        /* Utility for a subtle background effect (lighter glow) */
+        .bg-gradient-radial {
+            background-image: radial-gradient(circle at 50% 50%, rgba(93, 92, 255, 0.05) 0%, transparent 70%);
+        }
+
+        /* Sidebar Item Active State */
+        .sidebar-item.active {
+            background-color: rgba(93, 92, 255, 0.1); /* Light primary tint */
+            border-left: 4px solid var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        .sidebar-item:not(.active):hover {
+            background-color: #f0f0f0;
+        }
+
+        /* Table Styles */
+        .custom-table th {
+            color: #6b7280; /* Gray-500 */
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb; /* Light border */
+        }
+        .custom-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f3f4f6; /* Very light border */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'sidebar': '#ffffff',
+                        'main-bg': '#f4f7f9',
+                        'card': '#ffffff',
+                        'primary': '#5d5cff',
+                        'accent': '#ff5c93',
+                        'secondary': '#00b386',
+                        'text-dark': '#333333',
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body class="p-3">
-  <h2>💰 Expense Manager</h2>
-  <p><strong>Total Spent:</strong> ₹{{ total }}</p>
-  <table class="table table-striped">
-    <tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th></tr>
-    {% for e in expenses %}
-      <tr>
-        <td>{{ e.date }}</td>
-        <td>{{ e.category }}</td>
-        <td>₹{{ e.amount }}</td>
-        <td>{{ e.description }}</td>
-      </tr>
-    {% endfor %}
-  </table>
+<body class="bg-main-bg text-text-dark">
+
+    <!-- Container for all content - now fixed to 100% viewport height -->
+    <div id="app-container" class="h-screen w-full">
+
+        <!-- LOGIN SCREEN VIEW -->
+
+        <section id="login-view" class="flex items-center justify-center h-screen w-full p-4 absolute inset-0 transition-opacity duration-500 z-50">
+            <div class="absolute inset-0 bg-main-bg bg-gradient-radial"></div>
+
+            <div class="bg-card p-10 lg:p-16 rounded-3xl shadow-xl max-w-sm w-full text-center border border-gray-200 z-10">
+                <h1 class="text-4xl font-extrabold mb-8 flex flex-col items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-primary mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6h6V2"/><path d="M4 22V8a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v14H4z"/></svg>
+                    <span class="text-text-dark tracking-widest">MoneyMatrix</span>
+                </h1>
+
+                <form id="login-form">
+                    <div class="mb-6 text-left">
+                        <label for="password" class="text-gray-600 text-sm block mb-2">Enter Password</label>
+                        <input type="password" id="password" class="w-full p-3 rounded-xl bg-gray-100 border border-gray-300 focus:border-primary outline-none transition text-text-dark" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-primary/30">
+                        Start
+                    </button>
+                    <p class="mt-4 text-xs text-gray-500 hover:text-gray-700 cursor-pointer transition">Go back</p>
+                </form>
+            </div>
+        </section>
+
+           <!-- DASHBOARD VIEW (Hidden until login) -->
+        <!-- Fixed to h-screen to ensure full height -->
+        <section id="dashboard-view" class="hidden h-screen w-full"> 
+            <div class="flex h-full">
+                <!-- Sidebar -->
+                <nav id="sidebar" class="w-64 flex-shrink-0 bg-sidebar border-r border-gray-200 flex flex-col shadow-lg">
+                    <div class="p-6">
+                        <h1 class="text-2xl font-extrabold tracking-wider text-text-dark">MoneyMatrix</h1>
+                    </div>
+
+                    <!-- Profile Section -->
+                    <div class="p-6 flex items-center border-b border-gray-200">
+                        <img src="https://placehold.co/40x40/5d5cff/ffffff?text=AJ" onerror="this.src='https://placehold.co/40x40/5d5cff/ffffff?text=JC'" alt="User Profile" class="w-10 h-10 rounded-full object-cover">
+                        <div class="ml-3">
+                            <p class="text-sm font-semibold text-text-dark">Ajeet Sharma</p>
+                            <p class="text-xs text-gray-500">Owner</p>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Links -->
+                    <div class="flex-grow p-4 space-y-2">
+                        <!-- Navigation Item Macro -->
+                        <a href="#" class="sidebar-item group flex items-center py-3 px-4 rounded-xl text-gray-600 hover:text-primary" data-page="home">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            <span class="ml-3">Home</span>
+                        </a>
+
+                        <a href="#" class="sidebar-item group flex items-center py-3 px-4 rounded-xl text-gray-600 hover:text-primary" data-page="expenses">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z"/><path d="M17 9H7"/><path d="M10 13l2 2 2-2"/></svg>
+                            <span class="ml-3">Expenses</span>
+                        </a>
+
+                        <a href="#" class="sidebar-item group flex items-center py-3 px-4 rounded-xl text-gray-600 hover:text-primary" data-page="trips">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6s-2 0-2 2v2a2 2 0 0 1-2 2h-2"/><path d="M12 18h9a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2H3"/></svg>
+                            <span class="ml-3">Trips</span>
+                        </a>
+
+                        <a href="#" class="sidebar-item group flex items-center py-3 px-4 rounded-xl text-gray-600 hover:text-primary" data-page="approvals">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                            <span class="ml-3">Approvals</span>
+                        </a>
+
+                        <!-- Separator -->
+                        <div class="h-4"></div>
+
+                        <a href="#" class="sidebar-item group flex items-center py-3 px-4 rounded-xl text-gray-600 hover:text-primary" data-page="settings">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 0-2 0l-.15-.08a2 2 0 0 0-2.73 2.24l.11.45a2 2 0 0 1-1.25 2.5l-.23.11a2 2 0 0 0 0 3.79l.23.11a2 2 0 0 1 1.25 2.5l-.11.45a2 2 0 0 0 2.73 2.24l.15-.08a2 2 0 0 0 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 0 2 0l.15.08a2 2 0 0 0 2.73-2.24l-.11-.45a2 2 0 0 1 1.25-2.5l.23-.11a2 2 0 0 0 0-3.79l-.23-.11a2 2 0 0 1-1.25-2.5l.11-.45a2 2 0 0 0-2.73-2.24l-.15.08a2 2 0 0 0-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <span class="ml-3">Settings</span>
+                        </a>
+
+                        <a href="#" class="sidebar-item group flex items-center py-3 px-4 rounded-xl text-gray-600 hover:text-primary" data-page="support">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            <span class="ml-3">Support</span>
+                        </a>
+                    </div>
+                </nav>
+
+                <!-- Main Content Area -->
+                <!-- Crucial change: The content area is the only part allowed to scroll (overflow-y-auto) -->
+                <main id="content-area" class="flex-grow overflow-y-auto p-4 lg:p-8">
+                    <!-- Global Header -->
+                    <header class="flex justify-between items-center pb-6 border-b border-gray-200 mb-6">
+                        <h2 id="page-title" class="text-3xl font-bold text-text-dark">Home</h2>
+                        <div class="flex items-center space-x-4">
+                            
+                        </div>
+                    </header>
+
+                    <!-- Page-Specific Content Sections -->
+                    <div id="page-home" class="page-content space-y-8">
+                        <!-- Home Dashboard Content -->
+
+                        <!-- Top Quick Access -->
+                        <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-8">
+                            <!-- Pending Tasks -->
+                            <div class="bg-card p-6 rounded-2xl shadow-md border border-gray-200 col-span-2">
+                                <h3 class="text-xl font-semibold mb-4 text-text-dark">Pending Tasks</h3>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between text-gray-700 hover:text-primary cursor-pointer transition">
+                                        <span>Pending Approvals</span>
+                                        <span class="text-primary font-bold">5</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-700 hover:text-primary cursor-pointer transition">
+                                        <span>New Trips Registered</span>
+                                        <span class="text-secondary font-bold">1</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-700 hover:text-primary cursor-pointer transition">
+                                        <span>Upcoming Expenses</span>
+                                        <span class="text-accent font-bold">4</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-700 hover:text-primary cursor-pointer transition">
+                                        <span>Unreported Advances</span>
+                                        <span class="text-text-dark font-bold">€0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Extra Tasks -->
+                            <div class="bg-card p-6 rounded-2xl shadow-md border border-gray-200 col-span-2">
+                                <h3 class="text-xl font-semibold mb-4 text-text-dark">Extra Tasks</h3>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between text-gray-700 hover:text-primary cursor-pointer transition">
+                                        <span>Pending Approvals</span>
+                                        <span class="text-primary font-bold">5</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-700 hover:text-primary cursor-pointer transition">
+                                        <span>New Trips Registered</span>
+                                        <span class="text-secondary font-bold">1</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-700 hover:text-primary cursor-pointer transition">
+                                        <span>Upcoming Expenses</span>
+                                        <span class="text-accent font-bold">4</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-700 hover:text-primary cursor-pointer transition">
+                                        <span>Unreported Advances</span>
+                                        <span class="text-text-dark font-bold">€0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <!-- Recent Expenses -->
+                            <div class="bg-card p-6 rounded-2xl shadow-md border border-gray-200">
+                                <h3 class="text-xl font-semibold mb-4 text-text-dark">Recent Expenses</h3>
+                                <div class="space-y-3 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Office Supplies</span>
+                                        <span class="text-text-dark font-medium">€150.00</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Travel Expenses</span>
+                                        <span class="text-text-dark font-medium">€450.25</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Hotel/Stay</span>
+                                        <span class="text-text-dark font-medium">€275.75</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    </main>
+            </div>
+        </section>
+
+    </div>
+  
+    <!-- JavaScript for Navigation and Charts -->
+    <script>
+        const loginView = document.getElementById('login-view');
+        const dashboardView = document.getElementById('dashboard-view');
+        const sidebarItems = document.querySelectorAll('.sidebar-item');
+        const pageTitle = document.getElementById('page-title');
+        const pages = document.querySelectorAll('.page-content');
+
+        /**
+         * Switches the main view between login and dashboard.
+         * @param {string} view - 'login' or 'dashboard'
+         */
+        function switchView(view) {
+            if (view === 'dashboard') {
+                // Simulate fade out and fade in
+                loginView.classList.add('opacity-0');
+                loginView.classList.remove('z-50');
+
+                setTimeout(() => {
+                    loginView.classList.add('hidden');
+                    dashboardView.classList.remove('hidden');
+                    // Ensure full screen visibility after switching
+                    dashboardView.classList.add('flex');
+                    showPage('home'); // Load the default page
+                }, 500);
+            } else {
+                dashboardView.classList.add('hidden');
+                loginView.classList.remove('hidden', 'opacity-0');
+                loginView.classList.add('z-50');
+            }
+        }
+
+        /**
+         * Handles internal dashboard navigation by hiding/showing sections.
+         * @param {string} pageId - The ID suffix of the page content div (e.g., 'home', 'expenses').
+         */
+        function showPage(pageId) {
+            // 1. Hide all pages
+            pages.forEach(page => page.classList.add('hidden'));
+
+            // 2. Show the requested page
+            const activePage = document.getElementById(`page-${pageId}`);
+            if (activePage) {
+                activePage.classList.remove('hidden');
+            }
+
+            // 3. Update active sidebar item
+            sidebarItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('data-page') === pageId) {
+                    item.classList.add('active');
+                }
+            });
+
+            // 4. Update Header Title
+            const titleMap = {
+                'home': 'Home',
+                'expenses': 'Expenses',
+                'trips': 'Trips',
+                'approvals': 'Approvals',
+                'settings': 'Settings',
+                'support': 'Support',
+            };
+            pageTitle.textContent = titleMap[pageId] || 'Dashboard';
+        }
+
+        // --- Event Listeners ---
+
+        // 1. Sidebar Navigation Listener
+        sidebarItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = item.getAttribute('data-page');
+                showPage(pageId);
+            });
+        });
+
+        // 2. Login Form Submission
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            console.log('Login attempt...');
+            switchView('dashboard');
+        });
+
+        // --- Chart Initialization (Uses Chart.js) ---
+        function initCharts() {
+            // Helper function for light theme gradient/colors
+            const getChartColors = (ctx) => {
+                const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
+                gradient.addColorStop(0, '#00b386'); // secondary
+                gradient.addColorStop(1, '#5d5cff'); // primary
+                return gradient;
+            };
+
+            // Monthly Spending Trend Chart (Bar Chart)
+            new Chart(document.getElementById('monthlyChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Team Spending',
+                        data: [400, 550, 600, 350, 700, 500],
+                        backgroundColor: getChartColors,
+                        borderRadius: 8,
+                        barThickness: 10,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { mode: 'index', intersect: false, },
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#6b7280' } // Gray-500 for light theme
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#e5e7eb' }, // Light grid lines
+                            ticks: { color: '#6b7280', stepSize: 200 }
+                        }
+                    }
+                }
+            });
+
+            // Day-to-Day Expenses Chart (Horizontal Bar Chart)
+            new Chart(document.getElementById('dayToDayChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Accommodation', 'Travel', 'Meals', 'Fuel'],
+                    datasets: [{
+                        label: 'Expense Category',
+                        data: [500, 300, 450, 200],
+                        backgroundColor: [
+                            '#5d5cff', // Primary
+                            '#ff5c93', // Accent
+                            '#00b386', // Secondary
+                            '#facc15' // Amber-500
+                        ],
+                        borderRadius: 8,
+                        barThickness: 15,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Horizontal bars
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { mode: 'index', intersect: false, },
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#e5e7eb' },
+                            ticks: { color: '#6b7280', stepSize: 100 }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#6b7280' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeApp() {
+            // Initially, show the login screen
+            switchView('login');
+
+            // Set up charts once the dashboard is ready
+            setTimeout(initCharts, 1000);
+        }
+
+        window.onload = initializeApp;
+    </script>
 </body>
 </html>

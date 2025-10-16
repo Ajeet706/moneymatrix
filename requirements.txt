@@ -1,5 +1,13 @@
+<<<<<<< HEAD
 ﻿pymupdf
 google-generativeai
 gunicorn
 whitenoise 
 django
+=======
+﻿pymupdf
+google-generativeai
+gunicorn
+whitenoise 
+django
+>>>>>>> 20c8bc7e7b064885717d71bfeccc9e0196e010cd
